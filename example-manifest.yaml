@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: truenas-cert-sync
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: truenas-cert-sync
+  name: truenas-cert-sync
+  namespace: truenas-cert-sync
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: truenas-cert-sync
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: truenas-cert-sync
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+      containers:
+      - envFrom:
+        - secretRef:
+            name: truenas-api-secret
+        image: harbor.anthonyuk.dev/library/truenas-cert-sync:latest
+        name: truenas-cert-sync
+        resources:
+          limits:
+            memory: 80Mi
+          requests:
+            cpu: 1m
+            memory: 14Mi
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /certs
+          name: tls-cert
+      volumes:
+      - name: tls-cert
+        secret:
+          secretName: truenas-tls-cert
+
+---
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app.kubernetes.io/name: truenas-cert-sync
+  name: truenas-tls-cert
+  namespace: truenas-cert-sync
+spec:
+  commonName: truenas.example.com
+  issuerRef:
+    group: certmanager.step.sm
+    kind: StepClusterIssuer
+    name: step-issuer
+  secretName: truenas-tls-cert
+  usages:
+  - server auth
+  - key agreement
