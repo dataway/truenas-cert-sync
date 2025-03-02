@@ -1,3 +1,8 @@
+# Example manifest that uses StepClusterIssuer to issue a certificate for TrueNAS
+# and deploys a container that syncs the certificate to TrueNAS.
+
+---
+
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -31,7 +36,7 @@ spec:
       - envFrom:
         - secretRef:
             name: truenas-api-secret
-        image: harbor.anthonyuk.dev/library/truenas-cert-sync:latest
+        image: ghcr.io/dataway/truenas-cert-sync:latest
         name: truenas-cert-sync
         resources:
           limits:
@@ -71,3 +76,20 @@ spec:
   usages:
   - server auth
   - key agreement
+
+---
+
+# Create a secret with the TrueNAS API credentials
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  labels:
+    app.kubernetes.io/name: truenas-cert-sync
+  name: truenas-api-secret
+  namespace: truenas-cert-sync
+stringData:
+  TRUENAS_URL: wss://truenas.example.com/websocket
+  TRUENAS_USERNAME: truenas-user
+  TRUENAS_PASSWORD: password
+  TRUENAS_APIKEY: api-key
